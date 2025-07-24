@@ -1,5 +1,4 @@
 ﻿using CSharpFunctionalExtensions;
-using System.Xml.Linq;
 
 namespace DeliveryApp.Domain.Models.CourierAggregate
 {
