@@ -29,28 +29,42 @@ namespace DeliveryApp.Domain.Models.SharedKernel
             return distance;
         }
 
+        public Result<object, Error> ChangeOnOneStep(Location target)
+        {
+            if (target.X > X) X++;
+            if (target.Y > Y) Y++;
+            if (target.X < X) X--;
+            if (target.Y < Y) Y--;
+
+            return new object();
+        }
+
         public static Result<Location> CreateRandom()
         {
             var random = new Random();
             return new Location(random.Next(1, 11), random.Next(1, 11));
         }
 
-        private UnitResult<Error> SetX(int x) 
+        private Result<object, Error> SetX(int x) 
         {
             if (x == 0) return Errors.LocationCannotBeEqualToZero(x);
             if (x < 0) return Errors.LocationCannotBeLessThanZero(x);
             if (x > 10) return Errors.LocationCannotBeMoreThanTen(x);
 
             X = x;
+
+            return new object();
         }
 
-        private UnitResult<Error> SetY(int y)
+        private Result<object, Error> SetY(int y)
         {
             if (y == 0) return Errors.LocationCannotBeEqualToZero(y);
             if (y < 0) return Errors.LocationCannotBeLessThanZero(y);
             if (y > 10) return Errors.LocationCannotBeMoreThanTen(y);
 
             Y = y;
+
+            return new object();
         }
 
         protected override IEnumerable<object> GetEqualityComponents()

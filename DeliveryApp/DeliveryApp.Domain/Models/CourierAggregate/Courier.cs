@@ -1,7 +1,7 @@
 ﻿using CSharpFunctionalExtensions;
 using DeliveryApp.Domain.Models.OrderAggregate;
-using DeliveryApp.Domain.Models.ValueObjects;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using DeliveryApp.Domain.Models.SharedKernel;
+using System.Xml.Linq;
 
 namespace DeliveryApp.Domain.Models.CourierAggregate
 {
@@ -21,58 +21,92 @@ namespace DeliveryApp.Domain.Models.CourierAggregate
             Name = name;
             Speed = speed;
             Location = location;
-            StoragePlaces = new List<StoragePlace>();
+            StoragePlaces = new() { storagePlace };
         }
 
-        public static Result<Courier> Create(string name, int speed, Location location)
+        public static Result<Courier, Error> Create(string name, int speed, Location location)
         {
-            if (name == null) throw new ArgumentNullException($"{nameof(name)} can't be null");
-            if (speed < 0) throw new ArgumentOutOfRangeException($"{nameof(speed)} can't be less than 0");
-            if (speed == 0) throw new ArgumentOutOfRangeException($"{nameof(speed)} can't be equal to 0");
-            if (location == null) throw new ArgumentNullException($"{nameof(location)} can't be null");
+            if (name is null) return Errors.CannotBeNull(nameof(name));
+            if (speed < 0) return Errors.IntCannotBeLessThanZero(nameof(speed));
+            if (speed == 0) Errors.IntCannotBeLessThanZero(nameof(speed));
+            if (location is null) return Errors.CannotBeNull(nameof(location));
 
-            var storagePlace = new StoragePlace(name, speed, location, new StoragePlace());
+            var storagePlace = StoragePlace.Create(StoragePlaceName.Bag, 10).Value;
 
             return new Courier(name, speed, location, storagePlace);
         }
 
-        public UnitResult<Error> AddStoragePlace(string name, int volume)
+        public Result<object, Error> AddStoragePlace(StoragePlaceName name, int volume)
         {
+            if (name is null) return Errors.CannotBeNull(nameof(name));
+            if (volume < 0) return Errors.IntCannotBeLessThanZero(nameof(volume));
+            if (volume == 0) Errors.IntCannotBeLessThanZero(nameof(volume));
 
+            var newStoragePlace = StoragePlace.Create(name, volume).Value;
+            StoragePlaces.Add(newStoragePlace);
+            return new object();
         }
 
-        public Result<Error> CanTakeOrder(Order order)
+        public Result<Guid?, Error> CanTakeOrder(Order order)
         {
+            if (order is null) return Errors.CannotBeNull(nameof(order));
 
+            var freeSpace = StoragePlaces.FirstOrDefault(x => x.CanStore(order.Volume).Value);
+
+            return freeSpace?.Id;
         }
 
-        public UnitResult<Error> TakeOrder(Order order)
+        public Result<object, Error> TakeOrder(Order order)
         {
+            if (order is null) return Errors.CannotBeNull(nameof(order));
 
+            var canFreeSpace = CanTakeOrder(order).Value;
+
+            if (canFreeSpace is not null)
+            {
+                StoragePlaces.ForEach(x => x.Store(order.Id, order.Volume));
+            }
+
+            return new object();
         }
 
-        public UnitResult<Error> AddStoragePlace(string name, int volume)
+        public Result<object, Error> CompleteOrder(Order order)
         {
-
+            if (order is null) return Errors.CannotBeNull(nameof(order));
+            StoragePlaces.ForEach(x => x.Clear(order.Id));
+            return new object();
         }
 
-        public UnitResult<Error> AddStoragePlace(string name, int volume)
+        public Result<double, Error> CalculateTimeToLocation(Location targetLocation)
         {
+            if (targetLocation is null) return Errors.CannotBeNull(nameof(targetLocation));
+            var steps = Location.DistanceTo(targetLocation).Value;
+            double time = steps / Speed;
 
+            return time;
         }
 
-        public UnitResult<Error> AddStoragePlace(string name, int volume)
+        public Result<object, Error> Move(Location target)
         {
+            if (target is null) return Errors.CannotBeNull(nameof(target));
+            Location.ChangeOnOneStep(target);
 
+            return new object();
         }
 
-
-        public static class Errors
+        private static class Errors
         {
             public static Error CourierError()
-            {
-                return new Error($"{nameof(Courier).ToLowerInvariant()}", "Discription error");
-            }
+                => new ($"{nameof(Courier).ToLowerInvariant()}", "Discription error");
+
+            public static Error CannotBeNull(string field)
+                => new ($"{field} can't be null");
+
+            public static Error IntCannotBeLessThanZero(string field)
+                => new ($"{field} can't be less than 0");
+
+            public static Error IntCannotBeEqualToZero(string field)
+                => new ($"{field} can't be equal to 0");
         }
     }
 }
