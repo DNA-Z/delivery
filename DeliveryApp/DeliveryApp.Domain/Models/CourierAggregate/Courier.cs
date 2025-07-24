@@ -47,13 +47,13 @@ namespace DeliveryApp.Domain.Models.CourierAggregate
             return new object();
         }
 
-        public Result<Guid?, Error> CanTakeOrder(Order order)
+        public Result<bool, Error> CanTakeOrder(Order order)
         {
             if (order is null) return Errors.CannotBeNull(nameof(order));
 
             var freeSpace = StoragePlaces.FirstOrDefault(x => x.CanStore(order.Volume).Value);
 
-            return freeSpace?.Id;
+            return freeSpace?.Id is not null;
         }
 
         public Result<object, Error> TakeOrder(Order order)
@@ -62,7 +62,7 @@ namespace DeliveryApp.Domain.Models.CourierAggregate
 
             var canFreeSpace = CanTakeOrder(order).Value;
 
-            if (canFreeSpace is not null)
+            if (canFreeSpace)
             {
                 StoragePlaces.ForEach(x => x.Store(order.Id, order.Volume));
             }
